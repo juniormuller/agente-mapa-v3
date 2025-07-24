@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mapa da Ocorrência</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+    .legend {
+      background: white;
+      padding: 10px;
+      font-size: 14px;
+      border-radius: 5px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    function parseParams() {
+      const url = new URL(window.location.href);
+      return {
+        cidade: url.searchParams.get("cidade") || "",
+        uf: url.searchParams.get("uf") || "",
+        endereco: url.searchParams.get("endereco") || "",
+        ocorrencia: url.searchParams.get("ocorrencia") || "",
+        unidades: JSON.parse(decodeURIComponent(url.searchParams.get("unidades") || "[]")),
+        rotas: JSON.parse(decodeURIComponent(url.searchParams.get("rotas") || "[]")),
+      };
+    }
+
+    async function geocodeEndereco(enderecoCompleto) {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoCompleto)}`;
+      const resp = await fetch(url);
+      const dados = await resp.json();
+      return dados.length > 0 ? [parseFloat(dados[0].lat), parseFloat(dados[0].lon)] : null;
+    }
+
+    async function montarMapa() {
+      const { cidade, uf, endereco, ocorrencia, unidades, rotas } = parseParams();
+      const localizacaoTexto = `${endereco}, ${cidade} - ${uf}`;
+      const coords = await geocodeEndereco(localizacaoTexto);
+
+      const map = L.map('map').setView(coords || [-15.78, -47.93], coords ? 13 : 5);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      if (coords) {
+        L.marker(coords).addTo(map).bindPopup(`<b>Local da ocorrência</b><br>${localizacaoTexto}<br>${ocorrencia}`);
+      }
+
+      unidades.forEach(unidade => {
+        geocodeEndereco(unidade.endereco).then(coord => {
+          if (coord) {
+            const icone = L.icon({
+              iconUrl: unidade.tipo === 'PRF' ? 'https://cdn-icons-png.flaticon.com/512/252/252035.png' : unidade.tipo === 'PM' ? 'https://cdn-icons-png.flaticon.com/512/252/252006.png' : 'https://cdn-icons-png.flaticon.com/512/252/252025.png',
+              iconSize: [32, 32],
+              iconAnchor: [16, 32]
+            });
+            L.marker(coord, { icon: icone })
+              .addTo(map)
+              .bindPopup(`<b>${unidade.nome}</b><br>${unidade.endereco}<br>📞 ${unidade.telefone}`);
+          }
+        });
+      });
+
+      rotas.forEach(rota => {
+        const latlngs = rota.pontos;
+        const cor = rota.cor || 'blue';
+        if (latlngs && latlngs.length > 1) {
+          L.polyline(latlngs, { color: cor, weight: 4 }).addTo(map).bindPopup(rota.descricao || "Rota de fuga");
+        }
+      });
+    }
+
+    montarMapa();
+  </script>
+</body>
+</html>
