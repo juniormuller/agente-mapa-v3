@@ -64,28 +64,5 @@
       unidades.forEach(unidade => {
         geocodeEndereco(unidade.endereco).then(coord => {
           if (coord) {
-            const icone = L.icon({
-              iconUrl: unidade.tipo === 'PRF' ? 'https://cdn-icons-png.flaticon.com/512/252/252035.png' : unidade.tipo === 'PM' ? 'https://cdn-icons-png.flaticon.com/512/252/252006.png' : 'https://cdn-icons-png.flaticon.com/512/252/252025.png',
-              iconSize: [32, 32],
-              iconAnchor: [16, 32]
-            });
-            L.marker(coord, { icon: icone })
-              .addTo(map)
-              .bindPopup(`<b>${unidade.nome}</b><br>${unidade.endereco}<br>📞 ${unidade.telefone}`);
-          }
-        });
-      });
+            const icon
 
-      rotas.forEach(rota => {
-        const latlngs = rota.pontos;
-        const cor = rota.cor || 'blue';
-        if (latlngs && latlngs.length > 1) {
-          L.polyline(latlngs, { color: cor, weight: 4 }).addTo(map).bindPopup(rota.descricao || "Rota de fuga");
-        }
-      });
-    }
-
-    montarMapa();
-  </script>
-</body>
-</html>
