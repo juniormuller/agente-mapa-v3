@@ -31,7 +31,6 @@
     function parseParams() {
       const url = new URL(window.location.href);
       return {
-        mapa: url.searchParams.get("mapa") || "policiamento",
         cidade: url.searchParams.get("cidade") || "",
         uf: url.searchParams.get("uf") || "",
         endereco: url.searchParams.get("endereco") || "",
@@ -46,32 +45,9 @@
       return dados.length > 0 ? [parseFloat(dados[0].lat), parseFloat(dados[0].lon)] : null;
     }
 
-    async function carregarPontosExtras(tipo, cidade, uf) {
-      // Exemplo: carrega pontos pré-definidos de acordo com o modo
-      const dados = {
-        policiamento: [
-          { tipo: "PM", nome: "15º BPM", endereco: `Rua da PM, ${cidade} - ${uf}` },
-          { tipo: "PRF", nome: "Delegacia PRF", endereco: `BR-116, ${cidade} - ${uf}` }
-        ],
-        fuga: [
-          { tipo: "FUGA", nome: "Ponto de Fuga 1", endereco: `Saída Norte, ${cidade} - ${uf}` },
-          { tipo: "FUGA", nome: "Ponto de Fuga 2", endereco: `Saída Leste, ${cidade} - ${uf}` }
-        ]
-      };
-      return dados[tipo] || [];
-    }
-
-    function escolherIcone(tipo) {
-      const icons = {
-        PM: "blue",
-        PRF: "green",
-        PRE: "orange",
-        PC: "gray",
-        Bombeiros: "red",
-        FUGA: "black"
-      };
+    function criarIcone(cor) {
       return new L.Icon({
-        iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${icons[tipo] || "blue"}.png`,
+        iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${cor}.png`,
         shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
         iconSize: [25, 41],
         iconAnchor: [12, 41],
@@ -81,7 +57,7 @@
     }
 
     async function montarMapa() {
-      const { mapa, cidade, uf, endereco, ocorrencia } = parseParams();
+      const { cidade, uf, endereco, ocorrencia } = parseParams();
       const localizacaoTexto = `${endereco}, ${cidade} - ${uf}`;
       const coords = await geocodeEndereco(localizacaoTexto);
 
@@ -90,26 +66,49 @@
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
 
+      // Local da ocorrência
       if (coords) {
-        L.marker(coords).addTo(map).bindPopup(`<b>Local da ocorrência</b><br>${localizacaoTexto}<br>${ocorrencia}`);
+        L.marker(coords, { icon: criarIcone("yellow") })
+          .addTo(map)
+          .bindPopup(`<b>Local da ocorrência</b><br>${localizacaoTexto}<br>${ocorrencia}`);
       }
 
-      const pontosExtras = await carregarPontosExtras(mapa, cidade, uf);
+      // Pontos de policiamento
+      const pontosPoliciamento = [
+        { nome: "15º BPM", endereco: `Rua João Abott, ${cidade} - ${uf}` },
+        { nome: "PRF Lajeado", endereco: `BR-386, km 340, ${cidade} - ${uf}` }
+      ];
 
-      pontosExtras.forEach(async ponto => {
-        const coord = await geocodeEndereco(ponto.endereco);
+      for (const p of pontosPoliciamento) {
+        const coord = await geocodeEndereco(p.endereco);
         if (coord) {
-          const icone = escolherIcone(ponto.tipo);
-          L.marker(coord, { icon: icone })
+          L.marker(coord, { icon: criarIcone("blue") })
             .addTo(map)
-            .bindPopup(`<b>${ponto.nome}</b><br>${ponto.endereco}`);
+            .bindPopup(`<b>${p.nome}</b><br>${p.endereco}`);
         }
-      });
+      }
+
+      // Pontos de rota de fuga
+      const pontosFuga = [
+        { nome: "Saída para Arroio do Meio", endereco: `RSC-453, acesso oeste, ${cidade} - ${uf}` },
+        { nome: "Saída para BR-386 sentido capital", endereco: `BR-386, km 347, ${cidade} - ${uf}` }
+      ];
+
+      for (const p of pontosFuga) {
+        const coord = await geocodeEndereco(p.endereco);
+        if (coord) {
+          L.marker(coord, { icon: criarIcone("red") })
+            .addTo(map)
+            .bindPopup(`<b>${p.nome}</b><br>${p.endereco}`);
+        }
+      }
+
     }
 
     montarMapa();
   </script>
 </body>
 </html>
+
 
 
